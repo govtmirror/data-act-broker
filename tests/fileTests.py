@@ -246,7 +246,7 @@ class FileTests(BaseTest):
     @staticmethod
     def insertSubmission(jobTracker):
         """ Insert one submission into job tracker and get submission ID back """
-        stmt = "INSERT INTO submission (datetime_utc) VALUES (0) RETURNING submission_id"
+        stmt = "INSERT INTO submission (datetime_utc, user_id) VALUES (0,1) RETURNING submission_id"
         response = jobTracker.runStatement(stmt)
         return response.fetchone()[0]
 
