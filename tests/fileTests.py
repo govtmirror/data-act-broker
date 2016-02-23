@@ -42,7 +42,7 @@ class FileTests(BaseTest):
             self.tablesCleared = True
             open(self.TABLES_CLEARED_FILE,"w").write(str(True))
             # Create submission ID
-            submissionResponse = jobTracker.runStatement("INSERT INTO submission (datetime_utc) VALUES (0) RETURNING submission_id")
+            submissionResponse = jobTracker.runStatement("INSERT INTO submission (datetime_utc,user_id) VALUES (0,1) RETURNING submission_id")
             submissionId = submissionResponse.fetchone()[0]
             self.submissionId = submissionId
             # Create jobs
