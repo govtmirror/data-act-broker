@@ -7,6 +7,7 @@ from loginTests import LoginTests
 from fileTests import FileTests
 import sys
 import os
+import xmlrunner
 
 def runTests():
 
@@ -39,6 +40,9 @@ def runTests():
     print(str(suite.countTestCases()) + " tests in suite")
 
     # Run tests and store results
+    if TestUtils.TEST_OUTPUT == "junitxml":
+        runner = xmlrunner.XMLTestRunner(output='test-reports')
+    else:
         runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
 
@@ -48,4 +52,5 @@ if __name__ == '__main__':
     url = os.getenv('BROKER_NAME', "NOT SET")
     if(url != "NOT SET") :
         TestUtils.BASE_URL = "http://broker"
+        TestUtils.TEST_OUTPUT = "junitxml"
     runTests()

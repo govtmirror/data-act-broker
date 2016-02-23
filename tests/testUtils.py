@@ -4,6 +4,9 @@ class TestUtils(object):
     # Test basic routes, including login and file submission
     BASE_URL = "http://127.0.0.1:80"
 
+    # Set test output
+    TEST_OUTPUT = "console"
+    
     JSON_HEADER = {"Content-Type": "application/json"}
 
     def getRequest(self,url) :
