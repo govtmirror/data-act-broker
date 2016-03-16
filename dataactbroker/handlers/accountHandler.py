@@ -15,7 +15,6 @@ class AccountHandler:
     This class contains the login / logout  functions
     """
     # Handles login process, compares username and password provided
-    credentialFile = "credentials.json"
     FRONT_END = ""
     # Instance fields include request, response, logFlag, and logFile
 
@@ -34,6 +33,13 @@ class AccountHandler:
         """ Add interfaces to an existing account handler """
         self.interfaces = interfaces
         self.userManager = interfaces.userDb
+
+    def checkPassword(self,password):
+        """Checks to make sure the password is valid"""
+        if( re.search(r"[\[\]\{\}~!@#$%^,.?;<>]", password) is None or len(password) < 8 or re.search(r"\d", password) is None or
+            re.search(r"[A-Z]", password) is None or re.search(r"[a-z]", password) is None) :
+            return False
+        return True
 
     def login(self,session):
         """
@@ -66,10 +72,15 @@ class AccountHandler:
                 if(self.interfaces.userDb.checkPassword(user,password,self.bcrypt)):
                     # We have a valid login
                     LoginSession.login(session,user.user_id)
-                    return JsonResponse.create(StatusCode.OK,{"message":"Login successful"})
+                    permissionList = []
+                    for permission in self.interfaces.userDb.getPermssionList():
+                        if(self.interfaces.userDb.hasPermisson(user,permission.name)):
+                            permissionList.append(permission.permission_type_id)
+                    return JsonResponse.create(StatusCode.OK,{"message":"Login successful","user_id": int(user.user_id),"name":user.name,"title":user.title ,"agency":user.agency, "permissions" : permissionList})
                 else :
                     raise ValueError("user name and or password invalid")
             except Exception as e:
+                    LoginSession.logout(session)
                     raise ValueError("user name and or password invalid")
 
         except (TypeError, KeyError, NotImplementedError) as e:
@@ -140,19 +151,23 @@ class AccountHandler:
             # Missing a required field, return 400
             exc = ResponseException("Request body must include email, name, agency, title, and password", StatusCode.CLIENT_ERROR)
             return JsonResponse.error(exc,exc.status)
+
+        if(not self.checkPassword(requestFields.getValue("password"))):
+            exc = ResponseException("Invalid Password", StatusCode.CLIENT_ERROR)
+            return JsonResponse.error(exc,exc.status)
         # Find user that matches specified email
         user = self.interfaces.userDb.getUserByEmail(requestFields.getValue("email"))
         # Add user info to database
         self.interfaces.userDb.addUserInfo(user,requestFields.getValue("name"),requestFields.getValue("agency"),requestFields.getValue("title"))
         self.interfaces.userDb.setPassword(user,requestFields.getValue("password"),self.bcrypt)
 
-        userLink= "".join(['<a href="', AccountHandler.FRONT_END, '">here</a>' ])
+        userLink= AccountHandler.FRONT_END
         # Send email to approver list
         emailThread = Thread(target=ThreadedFunction, kwargs=dict(from_email=system_email,username=user.name,title=user.title,agency=user.agency,userEmail=user.email,link=userLink))
         emailThread.start()
 
         #email user
-        link= "".join(['<a href="', AccountHandler.FRONT_END, '">here</a>' ])
+        link= AccountHandler.FRONT_END
         emailTemplate = {'[EMAIL]' : system_email}
         newEmail = sesEmail(user.email, system_email,templateType="account_creation_user",parameters=emailTemplate,database=self.interfaces.userDb)
         newEmail.send()
@@ -190,7 +205,7 @@ class AccountHandler:
                 return JsonResponse.error(exc,exc.status)
         emailToken = sesEmail.createToken(email,self.interfaces.userDb,"validate_email")
         LoginSession.logout(session)
-        link= "".join(['<a href="', AccountHandler.FRONT_END,'/registration/',emailToken ,'">here</a>' ])
+        link= "".join([AccountHandler.FRONT_END,'/registration/',emailToken])
         emailTemplate = {'[USER]': email, '[URL]':link}
         newEmail = sesEmail(email, system_email,templateType="validate_email",parameters=emailTemplate,database=self.interfaces.userDb)
         newEmail.send()
@@ -284,7 +299,7 @@ class AccountHandler:
             if(requestDict.getValue("new_status") == "approved"):
                 # Grant agency_user permission to newly approved users
                 self.interfaces.userDb.grantPermission(user,"agency_user")
-                link= "".join(['<a href="', AccountHandler.FRONT_END, '">here</a>' ])
+                link=  AccountHandler.FRONT_END
                 emailTemplate = { '[URL]':link,'[EMAIL]':system_email}
                 newEmail = sesEmail(user.email, system_email,templateType="account_approved",parameters=emailTemplate,database=self.interfaces.userDb)
                 newEmail.send()
@@ -311,7 +326,7 @@ class AccountHandler:
             return JsonResponse.error(exc,exc.status)
         userInfo = []
         for user in users:
-            thisInfo = {"id":user.user_id,"name":user.name, "email":user.email, "agency":user.agency, "title":user.title}
+            thisInfo = {"name":user.name, "title":user.title,  "agency":user.agency, "email":user.email, "id":user.user_id }
             userInfo.append(thisInfo)
         return JsonResponse.create(StatusCode.OK,{"users":userInfo})
 
@@ -331,10 +346,15 @@ class AccountHandler:
             # Don't have the keys we need in request
             exc = ResponseException("Set password route requires keys user_email and password",StatusCode.CLIENT_ERROR)
             return JsonResponse.error(exc,exc.status)
+
+        if(not self.checkPassword(requestDict.getValue("password"))):
+            exc = ResponseException("Invalid Password", StatusCode.CLIENT_ERROR)
+            return JsonResponse.error(exc,exc.status)
         # Get user from email
         user = self.interfaces.userDb.getUserByEmail(requestDict.getValue("user_email"))
         # Set new password
         self.interfaces.userDb.setPassword(user,requestDict.getValue("password"),self.bcrypt)
+
         # Return success message
         return JsonResponse.create(StatusCode.OK,{"message":"Password successfully changed"})
 
@@ -361,14 +381,12 @@ class AccountHandler:
             exc = ResponseException("Unknown Error",StatusCode.CLIENT_ERROR,ValueError)
             return JsonResponse.error(exc,exc.status)
 
-        # Remove current password hash
-        user.password_hash = None
         LoginSession.logout(session)
         self.interfaces.userDb.session.commit()
         email = requestDict.getValue("email")
         # Send email with token
         emailToken = sesEmail.createToken(email,self.interfaces.userDb,"password_reset")
-        link= "".join(['<a href="', AccountHandler.FRONT_END,'/forgotpassword/',emailToken ,'">here</a>' ])
+        link= "".join([ AccountHandler.FRONT_END,'/forgotpassword/',emailToken])
         emailTemplate = { '[URL]':link}
         newEmail = sesEmail(user.email, system_email,templateType="reset_password",parameters=emailTemplate,database=self.interfaces.userDb)
         newEmail.send()
@@ -393,4 +411,4 @@ class AccountHandler:
         for permission in self.interfaces.userDb.getPermssionList():
             if(self.interfaces.userDb.hasPermisson(user,permission.name)):
                 permissionList.append(permission.permission_type_id)
-        return JsonResponse.create(StatusCode.OK,{"user_id": int(uid),"name":user.name,"agency":user.agency, "permissions" : permissionList})
+        return JsonResponse.create(StatusCode.OK,{"user_id": int(uid),"name":user.name,"agency":user.agency,"title":user.title, "permissions" : permissionList})
