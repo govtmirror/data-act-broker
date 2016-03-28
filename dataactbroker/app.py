@@ -14,7 +14,7 @@ from dataactbroker.handlers.aws.session import DynamoInterface, SessionTable
 from dataactbroker.fileRoutes import add_file_routes
 from dataactbroker.loginRoutes import add_login_routes
 from dataactbroker.userRoutes import add_user_routes
-from app import app
+from dataactbroker.app import app as application
 
 def runApp():
     try :
