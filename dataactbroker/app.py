@@ -23,6 +23,7 @@ def runApp():
         app = Flask(__name__,instance_path=config_path)
 
 
+
         def getAppConfiguration() :
             """gets the web_api_configuration JSON"""
             configFile = "".join([app.instance_path, "/web_api_configuration.json"])
@@ -84,4 +85,4 @@ def runApp():
 
         del exc_tb
 if __name__ == '__main__' or __name__[0:5]=="uwsgi":
-    app = runApp()
+    application = app = runApp()
