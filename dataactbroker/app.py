@@ -86,4 +86,4 @@ def runApp():
 
         del exc_tb
 if __name__ == '__main__' or __name__[0:5]=="uwsgi":
-    application = app = runApp()
+    app = runApp()
