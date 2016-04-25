@@ -13,6 +13,7 @@ from dataactbroker.fileRoutes import add_file_routes
 from dataactbroker.loginRoutes import add_login_routes
 from dataactbroker.userRoutes import add_user_routes
 from dataactcore.config import CONFIG_BROKER, CONFIG_SERVICES, CONFIG_DB, CONFIG_PATH
+import subprocess
 
 
 def createApp():
@@ -80,6 +81,11 @@ def createApp():
 
         SessionTable.setup(app, local)
 
+        dynamo_status_str = "".join(["nmap -Pn -n -p ", str(CONFIG_DB['dynamo_port']), " -oG - ", CONFIG_DB['dynamo_host'], " | awk '/\/open\//{print $2}'"])
+        dynamo_status = subprocess.check_output(dynamo_status_str, shell=True)
+
+        if not (CONFIG_BROKER['use_aws'] or dynamo_status):
+            raise BaseException("DynamoDB is not running")
         return app
 
     except Exception as e:
