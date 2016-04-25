@@ -81,11 +81,12 @@ def createApp():
 
         SessionTable.setup(app, local)
 
-        dynamo_status_str = "".join(["nmap -Pn -n -p ", str(CONFIG_DB['dynamo_port']), " -oG - ", CONFIG_DB['dynamo_host'], " | awk '/\/open\//{print $2}'"])
-        dynamo_status = subprocess.check_output(dynamo_status_str, shell=True)
-
-        if not (CONFIG_BROKER['use_aws'] or dynamo_status):
-            raise BaseException("DynamoDB is not running")
+        if not CONFIG_BROKER['use_aws']:
+            dynamo_status_str = "".join(["nmap -Pn -n -p ", str(CONFIG_DB['dynamo_port']), " -oG - ",
+                                         CONFIG_DB['dynamo_host'], " | awk '/\/open\//{print $2}'"])
+            dynamo_status = subprocess.check_output(dynamo_status_str, shell=True)
+            if not dynamo_status:
+                raise BaseException("DynamoDB is not running")
         return app
 
     except Exception as e:
